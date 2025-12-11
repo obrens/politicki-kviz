@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="sr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Политички квиз</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f0f1f5; margin: 0; padding: 0; }
+    .wrapper { max-width: 800px; margin: 32px auto; background: #fff; padding: 32px; border-radius: 20px; box-shadow: 0 6px 25px rgba(0,0,0,0.1); }
+
+    h1 { text-align: center; font-size: 32px; font-weight: 800; margin-top: 0; color: #2c3e50; }
+    p.subtitle { text-align: center; color: #555; margin-top: 4px; font-size: 16px; }
+
+    .question { background: #fff; border-left: 6px solid #4a6ea9; border-radius: 12px; padding: 20px 20px 16px 20px; margin: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .question div:first-child { font-size: 18px; font-weight: 600; color: #2c3e50; line-height: 1.4; max-width: 650px; }
+
+    .likert { display: flex; justify-content: space-between; margin-top: 12px; }
+    .likert label { display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 14px; flex:1; color: #555; }
+    .likert input { display: none; }
+    .likert span { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ccc; transition: all 0.2s; background: #fff; font-weight: 600; color: #333; }
+    .likert input:checked + span {
+      transform: scale(1.1);
+      border-color: #4a6ea9;
+      background: #4a6ea9;
+      color: #fff;
+    }
+
+    .controls { display: flex; gap: 12px; margin: 24px 0; flex-wrap: wrap; }
+    button { flex-shrink:0; padding: 12px 20px; border: none; border-radius: 12px; background: #4a6ea9; color: white; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #3b5780; }
+    #shareLink { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #ccc; }
+
+    footer { margin-top: 40px; color: #666; font-size: 14px; text-align: center; }
+
+    /* Shareable dual-color bars */
+    #shareableBars { margin-top: 32px; padding: 16px; background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .shareBar { margin: 16px 0; }
+    .shareBar strong { display: block; margin-bottom: 4px; color: #2c3e50; }
+    .shareBar .barWrap { height: 22px; border-radius: 10px; overflow: hidden; display: flex; }
+    .shareBar .barLeft,
+    .shareBar .barRight { height: 100%; }
+    .shareBar .labels { display: flex; justify-content: space-between; font-size: 14px; margin-top: 2px; }
+    .shareBar .labels span { color: #555; font-weight: normal; }
+    .shareBar .labels span.highlight { font-weight: 700; color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>Политички квиз</h1>
+    <p class="subtitle">Квиз политичке оријентације у српској политици</p>
+
+    <div id="quiz"></div>
+
+    <div class="controls">
+      <button id="show">Прикажи резултат</button>
+      <button id="reset">Ресетуј</button>
+      <button id="copyLink">Копирај линк</button>
+      <input id="shareLink" readonly />
+    </div>
+
+    <div id="shareableBars"></div>
+
+    <footer>
+      Економија: капитализам — социјализам · Спољна политика: антизападна — прозападна · Ауторитет: аутократија — револуција · Култура: традиционална — прогресивна
+    </footer>
+  </div>
+
+  <script>
+    const axes = [
+      { id:0, name:"Економија", left:"тржишна", right:"државна", colors:["#00897b","#f44336"] },
+      { id:1, name:"Спољна политика", left:"антизападна", right:"прозападна", colors:["#ff9800","#03a9f4"] },
+      { id:2, name:"Ауторитет", left:"аутократија", right:"револуција", colors:["#3f51b5","#ffeb3b"] },
+      { id:3, name:"Култура", left:"традиционална", right:"прогресивна", colors:["#8bc34a","#9c27b0"] }
+    ];
+
+    const questions = [
+      // Economic (axis 0)
+      {axis:0, dir:1,  text:"Превише тога смо приватизовали"},
+      {axis:0, dir:-1, text:"Порези у Србији су превисоки"},
+      {axis:0, dir:1,  text:"Капитализам је довео до превелике разлике између богатих и сиромашних"},
+      {axis:0, dir:-1, text:"Државни пензиони систем је попут пирамидалне шеме, и мора се хитно реформисати или приватизовати"},
+
+      // Diplomatic (axis 1)
+      {axis:1, dir:1, text:"Србија треба да уђе у ЕУ или НАТО"},
+      {axis:1, dir:-1,  text:"Превише слушамо диктате међународних институција попут Хашког трибунала, ММФ-а, Светске здравствене организације"},
+      {axis:1, dir:1, text:"Треба више да се потрудимо да изградимо добре односе са земљама Западног Балкана и бивше Југославије"},
+      {axis:1, dir:1,  text:"Морамо да прихватимо реалност по питању Косова како бисмо напредовали"},
+
+      // Authority (axis 2)
+      {axis:2, dir:1,  text:"Треба да се чувамо да нам се не догоди обојена револуција"},
+      {axis:2, dir:1, text:"5. октобар је био грешка"},
+      {axis:2, dir:-1,  text:"Србији фали људских права и демократије"},
+      {axis:2, dir:1, text:"Неке странке, медије или политичаре треба забранити"},
+
+      // Societal (axis 3)
+      {axis:3, dir:1,  text:"Не треба да постоји школска слава - нисмо сви Православци"},
+      {axis:3, dir:-1, text:"ЛГБТ пропаганда је штетна за друштво"},
+      {axis:3, dir:-1,  text:"По питању имиграције треба више да се угледамо на Мађарску него на Шведску"},
+      {axis:3, dir:1, text:"Држава треба више да ради на постизању родне равноправности"}
+    ];
+
+    const quizDiv = document.getElementById('quiz');
+questions.forEach((q,i)=>{
+  const d = document.createElement('div'); d.className='question';
+  const p = document.createElement('div'); p.textContent = q.text;
+  const lik = document.createElement('div'); lik.className='likert';
+  for(let v=1; v<=5; v++){
+    const lab = document.createElement('label');
+    lab.innerHTML = `<input type="radio" name="q${i}" value="${v}" ${v===3?'checked':''}><span>${v}</span>`;
+    lik.appendChild(lab);
+  }
+  d.appendChild(p); d.appendChild(lik);
+  quizDiv.appendChild(d);
+});
+
+function readAnswers(){
+  return questions.map((q,i)=>{
+    const v = document.querySelector(`input[name=q${i}]:checked`);
+    return v ? Number(v.value) : 3;
+  });
+}
+
+function score(a){
+  const per = [0,0,0,0];
+  a.forEach((v,i)=>{
+    per[questions[i].axis] += (v - 3) * questions[i].dir;
+  });
+  return per.map(x => x / 8);
+}
+
+function encode(a){ 
+  try { return btoa(a.join(',')); } 
+  catch(e){ return ''; } 
+}
+function decode(s){ 
+  try { return atob(s).split(',').map(Number); } 
+  catch(e){ return null; } 
+}
+
+function renderShareableBars(res){
+  const container = document.getElementById('shareableBars');
+  container.innerHTML = '<h2 style="text-align:center">Ваш политички компас</h2>';
+  axes.forEach((ax,i)=>{
+    const val = res[i];  // -1 .. +1
+    const leftPct = 50 - val * 50;
+    const rightPct = 50 + val * 50;
+    const bar = document.createElement('div');
+    bar.className = 'shareBar';
+    bar.innerHTML = `
+      <strong>${ax.name}</strong>
+      <div class="barWrap">
+        <div class="barLeft" style="width:${leftPct}%; background:${ax.colors[0]};"></div>
+        <div class="barRight" style="width:${rightPct}%; background:${ax.colors[1]};"></div>
+      </div>
+      <div class="labels">
+        <span class="${val<0 ? 'highlight' : ''}">${ax.left}</span>
+        <span class="${val>0 ? 'highlight' : ''}">${ax.right}</span>
+      </div>
+    `;
+    container.appendChild(bar);
+  });
+
+  const answers = readAnswers();
+  const encoded = encode(answers);
+  document.getElementById('shareLink').value =
+    location.origin + location.pathname + '?r=' + encoded;
+}
+
+document.getElementById('show').onclick = () => {
+  const res = score(readAnswers());
+  renderShareableBars(res);
+};
+document.getElementById('reset').onclick = () => location.reload();
+document.getElementById('copyLink').onclick = () => {
+  const el = document.getElementById('shareLink');
+  el.select(); document.execCommand('copy');
+  alert('Копирано!');
+};
+
+// Pre-select answers from URL if present
+(function init(){
+  const p = new URLSearchParams(location.search);
+  if(p.has('r')){
+    const dec = decode(p.get('r'));
+    if(dec && dec.length === questions.length){
+      dec.forEach((v,i)=>{
+        const el = document.querySelector(`input[name=q${i}][value='${v}']`);
+        if(el) el.checked = true;
+      });
+      renderShareableBars(score(dec));
+    }
+  }
+})();
+</script>
+</body>
+</html>
