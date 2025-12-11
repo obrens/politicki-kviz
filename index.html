@@ -13,6 +13,13 @@ body { font-family: system-ui, sans-serif; background: #f0f1f5; margin: 0; paddi
 h1 { text-align: center; font-size: 32px; font-weight: 800; margin-top: 0; color: #2c3e50; }
 p.subtitle { text-align: center; color: #555; margin-top: 4px; font-size: 16px; }
 
+#friendResults { background: #f8f9fa; border: 2px solid #d0d5dd; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+#friendResults h3 { margin: 0 0 16px 0; color: #2c3e50; font-size: 18px; text-align: center; }
+#friendResults .miniBar { margin: 12px 0; }
+#friendResults .miniBar strong { display: block; margin-bottom: 4px; color: #2c3e50; font-size: 14px; }
+#friendResults .miniSpectrum { position: relative; height: 6px; background: linear-gradient(to right, #e8edf2 0%, #d4dce5 50%, #e8edf2 100%); border-radius: 3px; }
+#friendResults .miniMarker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #6b7280; border: 2px solid #fff; border-radius: 50%; }
+
 #quiz { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 @media (max-width: 1150px) {
   #quiz { grid-template-columns: 1fr; }
@@ -31,7 +38,8 @@ p.subtitle { text-align: center; color: #555; margin-top: 4px; font-size: 16px; 
 .controls { display: flex; gap: 12px; margin: 24px 0; flex-wrap: wrap; }
 button { flex-shrink:0; padding: 12px 20px; border: none; border-radius: 12px; background: #4a6ea9; color: white; font-weight: 600; cursor: pointer; transition: background 0.2s; }
 button:hover { background: #3b5780; }
-#shareLink { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #ccc; }
+#shareLink { flex-grow: 1; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px; }
+.linkCopied { color: #4a6ea9; font-size: 13px; font-weight: 600; padding: 12px 0; }
 
 footer { margin-top: 40px; color: #666; font-size: 14px; text-align: center; }
 
@@ -40,16 +48,27 @@ footer { margin-top: 40px; color: #666; font-size: 14px; text-align: center; }
 .shareBar { margin: 24px 0; }
 .shareBar strong { display: block; margin-bottom: 8px; color: #2c3e50; font-size: 16px; font-weight: 600; }
 .shareBar .spectrum { position: relative; height: 8px; background: linear-gradient(to right, #e8edf2 0%, #d4dce5 50%, #e8edf2 100%); border-radius: 4px; margin: 12px 0; }
-.shareBar .marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: #4a6ea9; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(74,110,169,0.4); transition: all 0.3s ease; }
+.shareBar .marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: #4a6ea9; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(74,110,169,0.4); transition: all 0.3s ease; z-index: 2; }
+.shareBar .friendMarker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; background: transparent; border: 3px solid #6b7280; border-radius: 50%; box-shadow: 0 2px 8px rgba(107,114,128,0.3); z-index: 1; }
 .shareBar .labels { display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px; }
 .shareBar .labels span { color: #6b7280; font-weight: 500; }
 .shareBar .labels span.highlight { font-weight: 700; color: #2c3e50; }
+
+#compactShare { margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #d0d5dd; }
+#compactShare h3 { margin: 0 0 12px 0; color: #2c3e50; font-size: 16px; text-align: center; }
+#compactShare .compactBars { display: flex; flex-direction: column; gap: 8px; }
+#compactShare .compactBar { display: flex; align-items: center; gap: 8px; }
+#compactShare .compactBar span { font-size: 13px; color: #555; min-width: 140px; }
+#compactShare .compactSpectrum { position: relative; flex: 1; height: 6px; background: linear-gradient(to right, #e8edf2 0%, #d4dce5 50%, #e8edf2 100%); border-radius: 3px; }
+#compactShare .compactMarker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #4a6ea9; border: 2px solid #fff; border-radius: 50%; }
 </style>
 </head>
 <body>
 <div class="wrapper">
 <h1>Брзи политички квиз</h1>
 <p class="subtitle">Квиз политичке оријентације у српској политици</p>
+
+<div id="friendResults" style="display:none;"></div>
 
 <div id="quiz"></div>
 
@@ -58,9 +77,11 @@ footer { margin-top: 40px; color: #666; font-size: 14px; text-align: center; }
   <button id="reset">Ресетуј</button>
   <button id="copyLink">Копирај линк</button>
   <input id="shareLink" readonly />
+  <span class="linkCopied" id="copyStatus" style="display:none;">✓ Копирано!</span>
 </div>
 
 <div id="shareableBars"></div>
+<div id="compactShare" style="display:none;"></div>
 
 <footer>
 Економија: тржишна — државна · Спољна политика: антизападна — прозападна · Ауторитет: аутократија — револуција · Култура: традиционална — прогресивна
@@ -92,6 +113,8 @@ const questions = [
   {axis:3, dir:-1, text:"ЛГБТ пропаганда је штетна за друштво"},
   {axis:3, dir:-1, text:"По питању имиграције треба више да се угледамо на Мађарску него на Шведску"}
 ];
+
+let friendScores = null;
 
 // Generate quiz
 const quizDiv = document.getElementById('quiz');
@@ -141,6 +164,27 @@ function score() {
 function encode(a){ try { return btoa(a.join(',')); } catch{ return ''; } }
 function decode(s){ try { return atob(s).split(',').map(Number); } catch{ return null; } }
 
+// Show friend results at top
+function showFriendResults(scores) {
+  const container = document.getElementById('friendResults');
+  container.innerHTML = '<h3>Резултати вашег пријатеља</h3>';
+  
+  axes.forEach((ax,i)=>{
+    const val = scores[i];
+    const position = 50 + val * 50;
+    const bar = document.createElement('div');
+    bar.className = 'miniBar';
+    bar.innerHTML = `
+      <strong>${ax.name}</strong>
+      <div class="miniSpectrum">
+        <div class="miniMarker" style="left:${position}%"></div>
+      </div>`;
+    container.appendChild(bar);
+  });
+  
+  container.style.display = 'block';
+}
+
 // Render results
 function renderShareableBars(res){
   const container = document.getElementById('shareableBars');
@@ -151,9 +195,17 @@ function renderShareableBars(res){
     const position = 50 + val * 50;
     const bar = document.createElement('div'); 
     bar.className='shareBar';
+    
+    let friendMarkerHTML = '';
+    if(friendScores) {
+      const friendPos = 50 + friendScores[i] * 50;
+      friendMarkerHTML = `<div class="friendMarker" style="left:${friendPos}%"></div>`;
+    }
+    
     bar.innerHTML = `
       <strong>${ax.name}</strong>
       <div class="spectrum">
+        ${friendMarkerHTML}
         <div class="marker" style="left:${position}%"></div>
       </div>
       <div class="labels">
@@ -163,18 +215,73 @@ function renderShareableBars(res){
     container.appendChild(bar);
   });
   
+  // Hide friend results box if shown
+  document.getElementById('friendResults').style.display = 'none';
+  
+  // Generate links
   const answers = questions.map((q,i)=> Number(document.querySelector(`input[name=q${i}]:checked`).value) * q.dir);
-  document.getElementById('shareLink').value = location.origin + location.pathname + '?r=' + encode(answers);
+  const fullLink = location.origin + location.pathname + '?r=' + encode(answers);
+  document.getElementById('shareLink').value = fullLink;
+  
+  // Generate compact share
+  renderCompactShare(res, fullLink);
+}
+
+// Render compact shareable graphic
+function renderCompactShare(res, link) {
+  const container = document.getElementById('compactShare');
+  container.innerHTML = '<h3>Компактан приказ за дељење</h3><div class="compactBars"></div>';
+  
+  const barsContainer = container.querySelector('.compactBars');
+  axes.forEach((ax,i)=>{
+    const val = res[i];
+    const position = 50 + val * 50;
+    const bar = document.createElement('div');
+    bar.className = 'compactBar';
+    bar.innerHTML = `
+      <span>${ax.name}</span>
+      <div class="compactSpectrum">
+        <div class="compactMarker" style="left:${position}%"></div>
+      </div>`;
+    barsContainer.appendChild(bar);
+  });
+  
+  const linkDiv = document.createElement('div');
+  linkDiv.style.marginTop = '12px';
+  linkDiv.innerHTML = `
+    <button id="copyCompactLink" style="width:100%; padding:10px;">Копирај компактан линк</button>
+    <input id="compactLinkField" readonly value="${link}" style="width:100%; margin-top:8px; padding:8px; border-radius:6px; border:1px solid #ccc; font-size:12px;">
+  `;
+  container.appendChild(linkDiv);
+  
+  container.style.display = 'block';
+  
+  document.getElementById('copyCompactLink').onclick = () => {
+    const el = document.getElementById('compactLinkField');
+    el.select();
+    document.execCommand('copy');
+    document.getElementById('copyCompactLink').textContent = '✓ Копирано!';
+    setTimeout(() => {
+      document.getElementById('copyCompactLink').textContent = 'Копирај компактан линк';
+    }, 2000);
+  };
 }
 
 // Buttons
-document.getElementById('show').onclick = () => renderShareableBars(score());
-document.getElementById('reset').onclick = () => location.reload();
+document.getElementById('show').onclick = () => {
+  renderShareableBars(score());
+  document.getElementById('shareableBars').style.display = 'block';
+};
+
+document.getElementById('reset').onclick = () => location.href = location.pathname;
+
 document.getElementById('copyLink').onclick = () => { 
-  const el=document.getElementById('shareLink'); 
+  const el = document.getElementById('shareLink'); 
   el.select(); 
-  document.execCommand('copy'); 
-  alert('Копирано!'); 
+  document.execCommand('copy');
+  const status = document.getElementById('copyStatus');
+  status.style.display = 'inline';
+  setTimeout(() => status.style.display = 'none', 2000);
 };
 
 // Pre-fill from URL
@@ -183,11 +290,22 @@ document.getElementById('copyLink').onclick = () => {
   if(p.has('r')){
     const dec = decode(p.get('r'));
     if(dec && dec.length === questions.length){
-      dec.forEach((v,i)=>{
-        const el = document.querySelector(`input[name=q${i}][value='${v>0?1:-1}']`);
-        if(el) el.checked = true;
+      // Calculate friend's scores
+      const scores = [0,0,0,0];
+      const counts = [0,0,0,0];
+      questions.forEach((q,i)=>{
+        scores[q.axis] += dec[i];
+        counts[q.axis]++;
       });
-      renderShareableBars(score());
+      friendScores = scores.map((s,i) => s / counts[i]);
+      
+      // Show friend results at top
+      showFriendResults(friendScores);
+      
+      // Reset all questions to neutral (Не)
+      questions.forEach((q,i)=>{
+        document.querySelector(`input[name=q${i}][value='-1']`).checked = true;
+      });
     }
   }
 })();
